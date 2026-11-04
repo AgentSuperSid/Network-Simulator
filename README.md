@@ -15,8 +15,10 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-I am planning to add more features to make it more interactive to the level of bits.
-It should also be able to interact in a way how hackers do in a network in a simpler form.
-We should be able to see the packet changing as it goess through the different layers. 
-We should be able to change bits in between to see how a network handles errors.
-As you keep zooming, the inside smaller stuff should should start getting visible.
+- I am planning to add more features to make it more interactive to the level of bits.
+- It should also be able to interact in a way how hackers do in a network in a simpler form.
+- We should be able to see the packet changing as it goess through the different layers. 
+- We should be able to change bits in between to see how a network handles errors.
+- As you keep zooming, the inside smaller stuff should should start getting visible.
+- My vision is for it to look like the firefox/chrome mapping a guy did, as you zoom you will see code and stuff at that parts.
+- But in my idea it should still be less text except the bits.
