@@ -22,3 +22,4 @@ If you are developing a production application, we recommend using TypeScript wi
 - As you keep zooming, the inside smaller stuff should should start getting visible.
 - My vision is for it to look like the firefox/chrome mapping a guy did, as you zoom you will see code and stuff at that parts.
 - But in my idea it should still be less text except the bits.
+- Some folders are not uploaded in GitHub.
