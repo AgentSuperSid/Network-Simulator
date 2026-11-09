@@ -20,6 +20,6 @@ If you are developing a production application, we recommend using TypeScript wi
 - We should be able to see the packet changing as it goess through the different layers. 
 - We should be able to change bits in between to see how a network handles errors.
 - As you keep zooming, the inside smaller stuff should should start getting visible.
-- My vision is for it to look like the firefox/chrome mapping a guy did, as you zoom you will see code and stuff at that parts.
+- My vision is for it to look like the 3D code visualizer of Chromium code made by a guy. But here it should be less code. Only bits and some short naming.
 - But in my idea it should still be less text except the bits.
 - Some folders are not uploaded in GitHub.
