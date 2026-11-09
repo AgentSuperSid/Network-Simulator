@@ -1,5 +1,11 @@
 # React + Vite
 
+## Interactive network lab
+
+Run `npm install` and `npm run dev` to start the lab. Send a TCP or UDP message, pause it, and use **Bits** to change payload bits. Resume or step to the next hop to see the result. Click a dotted link to disconnect or reconnect it; reset restores the initial scenario. The zoom buttons enlarge the topology, while the inspection controls reveal packet and bit details.
+
+This is an educational model, not a full internet or protocol implementation. The topology and route are fixed, the integrity check is represented by detecting payload changes, and TCP gets one simplified retry. Ethernet, IP and transport fields are illustrative rather than serialized wire headers. No real network traffic or malware is generated.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
