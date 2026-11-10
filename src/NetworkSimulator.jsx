@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './lab.css';
+import { crc32, hex32, encodeMessage } from './integrity.js';
 
 const nodes = [
   { id: 'laptop', name: 'Laptop', ip: '192.168.1.10', x: 10, y: 52, icon: '▣' },
@@ -8,9 +9,9 @@ const nodes = [
   { id: 'gateway', name: 'Gateway', ip: '10.0.0.1', x: 70, y: 52, icon: '◉' },
   { id: 'server', name: 'Server', ip: '10.0.0.20', x: 90, y: 52, icon: '▤' },
 ];
-const bytes = text => [...new TextEncoder().encode(text)];
+const bytes = encodeMessage;
 const bits = n => n.toString(2).padStart(8, '0');
-const initial = () => ({ status: 'idle', hop: 0, progress: 0, attempt: 1, dirty: false, data: bytes('Hello'), original: bytes('Hello'), events: ['Ready to send a packet.'] });
+const initial = () => ({ status: 'idle', hop: 0, progress: 0, attempt: 1, dirty: false, checksum: crc32(bytes('Hello')), data: bytes('Hello'), original: bytes('Hello'), events: ['Ready to send a packet.'] });
 const add = (events, message) => [message, ...events].slice(0, 12);
 
 // A deliberately small discrete-event model: one frame per hop and one retry for TCP.
@@ -18,7 +19,7 @@ function advance(s, links, protocol) {
   if (s.status !== 'playing') return s;
   if (s.progress < 1) return { ...s, progress: Math.min(1, s.progress + 0.025) };
   if (!links[s.hop]) return { ...s, status: 'dropped', events: add(s.events, `Link to ${nodes[s.hop + 1].name} is down. Frame dropped.`) };
-  if (s.dirty) {
+  if (crc32(s.data) !== s.checksum) {
     if (protocol === 'TCP' && s.attempt === 1) return { ...s, hop: 0, progress: 0, dirty: false, data: [...s.original], attempt: 2, events: add(s.events, 'Frame failed its integrity check. TCP timeout triggers a simplified retransmission.') };
     return { ...s, status: 'dropped', events: add(s.events, 'Frame failed its integrity check and was discarded.') };
   }
@@ -41,9 +42,9 @@ export default function NetworkSimulator() {
     const timer = setInterval(() => setSim(s => advance(s, links, protocol)), 40 / speed);
     return () => clearInterval(timer);
   }, [sim.status, links, protocol, speed]);
-  const send = () => { const data = bytes(message || 'Hello').slice(0, 32); setSim({ ...initial(), data, original: [...data], status: 'playing', events: [`${protocol} message sent from Laptop to Server.`] }); };
+  const send = () => { const data = bytes(message || 'Hello'); setSim({ ...initial(), data, checksum: crc32(data), original: [...data], status: 'playing', events: [`${protocol} message sent from Laptop to Server.`] }); };
   const reset = () => { setSim(initial()); setLinks([true, true, true, true]); setProtocol('TCP'); setMessage('Hello'); setZoom(1); setDetail('network'); setSelected(null); };
-  const flip = (index, bit) => setSim(s => { const data = [...s.data]; data[index] ^= 1 << bit; return { ...s, data, dirty: data.some((n, i) => n !== s.original[i]), events: add(s.events, `Changed payload byte ${index + 1}, bit ${7 - bit}.`) }; });
+  const flip = (index, bit) => setSim(s => { const data = [...s.data]; data[index] ^= 1 << bit; return { ...s, data, dirty: data.some((n, i) => n !== s.original[i]), events: add(s.events, `Changed payload byte ${index + 1}, bit ${8 - bit}.`) }; });
   const active = ['playing', 'paused'].includes(sim.status);
   const x = nodes[sim.hop].x + (nodes[sim.hop + 1].x - nodes[sim.hop].x) * sim.progress;
   const ttl = 64 - (sim.hop >= 2 ? 1 : 0) - (sim.hop >= 3 ? 1 : 0);
@@ -59,7 +60,8 @@ export default function NetworkSimulator() {
     </section><aside className="panel"><div className="panelhead"><span className="eyebrow">02 / EXPLORE</span><h2>Simulation lab</h2><p>Small network, big questions.</p></div>
       <div className="section"><label>TRANSPORT PROTOCOL</label><div className="choices">{['TCP', 'UDP'].map(p => <button disabled={active} className={protocol === p ? 'chosen' : ''} onClick={() => setProtocol(p)} key={p}>{p}</button>)}</div><p>{protocol === 'TCP' ? 'Reliable delivery, with a simplified retry after corruption.' : 'Connectionless delivery; a damaged frame is discarded.'}</p><label htmlFor="payload">MESSAGE · UP TO 32 UTF-8 BYTES</label><input id="payload" value={message} maxLength={32} disabled={active} onChange={e => setMessage(e.target.value)} /></div>
       <div className="section"><label>INSPECTION LEVEL</label><div className="choices">{['network', 'packet', 'bits'].map(d => <button key={d} onClick={() => setDetail(d)} className={detail === d ? 'chosen' : ''}>{d}</button>)}</div>
-      {detail === 'network' ? <div className="card"><span className="eyebrow">{selected ? 'SELECTED DEVICE' : 'HOW TO EXPLORE'}</span><h3>{selected ? selected.name : 'Start a transmission'}</h3><p>{selected ? `${selected.ip || 'Forwards frames within the local network.'}` : 'Send a packet, then pause or click it. Switch to packet or bits to look inside.'}</p><p>Click a dotted connection to toggle it on or off—even during a run.</p></div> : <><div className="card"><span className="eyebrow">ENCAPSULATION · SIMPLIFIED</span><div className="layer"><b>Ethernet</b><span>Frame for current link</span></div><div className="layer"><b>IPv4</b><span>192.168.1.10 → 10.0.0.20 · TTL {ttl}</span></div><div className="layer"><b>{protocol}</b><span>{protocol === 'TCP' ? 'Port 443 · retry modeled' : 'Port 53 · no retry'}</span></div><div className="layer"><b>Payload</b><span>{sim.data.length} bytes · {sim.dirty ? 'modified' : 'original'}</span></div></div>{detail === 'bits' && <div className="bitbox"><label>PAYLOAD BITS</label><p>{sim.status === 'paused' ? 'Click a bit to flip it, then resume.' : 'Pause a packet to edit its bits.'}</p>{sim.data.map((byte, i) => <div className="byte" key={i}><small>{String(i + 1).padStart(2, '0')}</small>{bits(byte).split('').map((bit, j) => <button key={j} disabled={sim.status !== 'paused'} className={bit !== bits(sim.original[i])[j] ? 'flipped' : ''} onClick={() => flip(i, 7 - j)} aria-label={`Flip byte ${i + 1} bit ${j + 1}`}>{bit}</button>)}</div>)}</div>}</>}
-      </div><div className="note"><b>A model, not the whole internet.</b> Frames, routing, integrity checks and TCP retries are simplified. Bit edits simulate corruption on the current link; this lab does not send real network traffic.</div></aside></div>
+      {detail === 'network' ? <div className="card"><span className="eyebrow">{selected ? 'SELECTED DEVICE' : 'HOW TO EXPLORE'}</span><h3>{selected ? selected.name : 'Start a transmission'}</h3><p>{selected ? `${selected.ip || 'Forwards frames within the local network.'}` : 'Send a packet, then pause or click it. Switch to packet or bits to look inside.'}</p><p>Click a dotted connection to toggle it on or off—even during a run.</p></div> : <><div className="card"><span className="eyebrow">ENCAPSULATION · SIMPLIFIED</span><div className="layer"><b>Ethernet</b><span>Frame for current link</span></div><div className="layer"><b>IPv4</b><span>192.168.1.10 → 10.0.0.20 · TTL {ttl}</span></div><div className="layer"><b>{protocol}</b><span>{protocol === 'TCP' ? 'Port 443 · retry modeled' : 'Port 53 · no retry'}</span></div><div className="layer"><b>Payload</b><span>{sim.data.length} bytes · {sim.dirty ? 'modified' : 'original'}</span></div></div>{detail === 'bits' && <div className="bitbox"><label>PAYLOAD BITS</label><div className="card"><b>Payload CRC-32</b><p>Sent: {hex32(sim.checksum)}<br />Calculated: {hex32(crc32(sim.data))}<br />{crc32(sim.data) === sim.checksum ? "MATCH — payload passes" : "MISMATCH — receiver will discard"}</p><p>Decoded: {new TextDecoder().decode(new Uint8Array(sim.data))}</p></div><p>{sim.status === 'paused' ? 'Click a bit to flip it, then resume.' : 'Pause a packet to edit its bits.'}</p>{sim.data.map((byte, i) => <div className="byte" key={i}><small>{String(i + 1).padStart(2, '0')}</small>{bits(byte).split('').map((bit, j) => <button key={j} disabled={sim.status !== 'paused'} className={bit !== bits(sim.original[i])[j] ? 'flipped' : ''} onClick={() => flip(i, 7 - j)} aria-label={`Flip byte ${i + 1} bit ${j + 1}`}>{bit}</button>)}</div>)}</div>}</>}
+      </div><div className="note"><b>A model, not the whole internet.</b> CRC-32 is calculated over payload bytes only. Frames, routing and TCP retries are simplified. Bit edits simulate corruption on the current link; this lab does not send real network traffic.</div></aside></div>
   </main>;
 }
+

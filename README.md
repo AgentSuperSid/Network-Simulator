@@ -4,7 +4,7 @@
 
 Run `npm install` and `npm run dev` to start the lab. Send a TCP or UDP message, pause it, and use **Bits** to change payload bits. Resume or step to the next hop to see the result. Click a dotted link to disconnect or reconnect it; reset restores the initial scenario. The zoom buttons enlarge the topology, while the inspection controls reveal packet and bit details.
 
-This is an educational model, not a full internet or protocol implementation. The topology and route are fixed, the integrity check is represented by detecting payload changes, and TCP gets one simplified retry. Ethernet, IP and transport fields are illustrative rather than serialized wire headers. No real network traffic or malware is generated.
+This is an educational model, not a full internet or protocol implementation. The topology and route are fixed, CRC-32 is calculated over payload bytes (not a complete Ethernet frame), and TCP gets one simplified retry. Ethernet, IP and transport fields are illustrative rather than serialized wire headers. No real network traffic or malware is generated.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
@@ -29,3 +29,6 @@ If you are developing a production application, we recommend using TypeScript wi
 - My vision is for it to look like the 3D code visualizer of Chromium code made by a guy. But here it should be less code. Only bits and some short naming.
 - But in my idea it should still be less text except the bits.
 - Some folders are not uploaded in GitHub.
+
+Run corruption and UTF-8 boundary tests with: node --test src/integrity.test.js
+
